@@ -51,7 +51,7 @@
                 if (result.status === "success") {
                     localStorage.setItem('v_token', result.token);
                     alert("領取成功！即將前往投票頁");
-                    location.href = `index.html?token=${result.token}`;
+                    window.location.href = `./index.html?token=${result.token}`;
                 } else {
                     alert(result.message);
                     btn.disabled = false;
@@ -65,4 +65,5 @@
 </body>
 
 </html>
+
 
