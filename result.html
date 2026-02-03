@@ -1,0 +1,87 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>即時投票統計</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        body { margin: 0; padding: 15px; background: #1a1a1a; color: white; font-family: sans-serif; height: 100vh; display: flex; flex-direction: column; box-sizing: border-box; }
+        #header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px; }
+        #time-display { font-family: monospace; color: #00ff00; font-size: 1.1rem; }
+        .chart-container { flex-grow: 1; position: relative; width: 100%; }
+        h2 { margin: 0; font-size: 1.2rem; }
+    </style>
+</head>
+<body>
+    <div id="header">
+        <h2>📊 即時統計看板</h2>
+        <div id="time-display">0000/00/00 00:00:00</div>
+    </div>
+    <div class="chart-container">
+        <canvas id="myChart"></canvas>
+    </div>
+
+    <script>
+        const GAS_URL = "你的_GAS_網址";
+        let myChart;
+
+        // 更新時間
+        function updateClock() {
+            const now = new Date();
+            const str = now.getFullYear() + '/' + (now.getMonth()+1).toString().padStart(2,'0') + '/' + now.getDate().toString().padStart(2,'0') + ' ' +
+                        now.getHours().toString().padStart(2,'0') + ':' + now.getMinutes().toString().padStart(2,'0') + ':' + now.getSeconds().toString().padStart(2,'0');
+            document.getElementById('time-display').innerText = str;
+        }
+        setInterval(updateClock, 1000);
+
+        // 初始化圖表
+        async function initChart() {
+            const res = await fetch(GAS_URL);
+            const data = await res.json();
+            const labels = data.teams.map(t => t.name);
+            const votes = data.teams.map(t => t.votes);
+
+            const ctx = document.getElementById('myChart').getContext('2d');
+            myChart = new Chart(ctx, {
+                type: 'bar', // 使用橫條圖
+                data: {
+                    labels: labels,
+                    datasets: [{
+                        label: '票數',
+                        data: votes,
+                        backgroundColor: 'rgba(54, 162, 235, 0.8)',
+                        borderColor: 'rgba(54, 162, 235, 1)',
+                        borderWidth: 1,
+                        borderRadius: 5
+                    }]
+                },
+                options: {
+                    indexAxis: 'y', // 讓長條圖橫向，手機更易讀
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    scales: {
+                        x: { grid: { color: '#333' }, ticks: { color: '#fff', stepSize: 1 } },
+                        y: { ticks: { color: '#fff', font: { size: 14 } } }
+                    },
+                    plugins: {
+                        legend: { display: false }
+                    }
+                }
+            });
+        }
+
+        // 定期刷新數據
+        async function refreshData() {
+            const res = await fetch(GAS_URL);
+            const data = await res.json();
+            myChart.data.datasets[0].data = data.teams.map(t => t.votes);
+            myChart.update();
+        }
+
+        initChart();
+        setInterval(refreshData, 5000);
+        updateClock();
+    </script>
+</body>
+</html>
