@@ -1,0 +1,66 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>領取投票碼</title>
+    <style>
+        body { font-family: sans-serif; text-align: center; padding: 40px 20px; background: #f0f2f5; }
+        .card { background: white; padding: 25px; border-radius: 15px; box-shadow: 0 4px 15px rgba(0,0,0,0.1); max-width: 350px; margin: auto; }
+        input { width: 100%; padding: 12px; margin: 15px 0; border: 1px solid #ddd; border-radius: 8px; box-sizing: border-box; font-size: 1rem; }
+        button { width: 100%; padding: 12px; background: #007bff; color: white; border: none; border-radius: 8px; font-size: 1.1rem; cursor: pointer; }
+        button:disabled { background: #ccc; }
+    </style>
+</head>
+<body>
+    <div class="card">
+        <h2>🗳️ 驗證身分領碼</h2>
+        <p style="color: #666; font-size: 0.9rem;">一人限領一次，密碼限投一票</p>
+        <input type="tel" id="phone" placeholder="輸入手機號碼 (10碼)" maxlength="10">
+        <button id="btn" onclick="start()">領取專屬密碼</button>
+        <p id="msg"></p>
+    </div>
+
+    <script>
+        const GAS_URL = "你的_GAS_網址";
+
+        async function start() {
+            const phone = document.getElementById('phone').value;
+            if (!/^09\d{8}$/.test(phone)) return alert("請輸入正確的手機號碼");
+
+            const btn = document.getElementById('btn');
+            btn.disabled = true;
+            document.getElementById('msg').innerText = "安全檢查中...";
+
+            try {
+                // 簡易抓取 IP & 指紋
+                const ipRes = await fetch('https://api.ipify.org?format=json');
+                const ipData = await ipRes.json();
+                const fingerprint = navigator.userAgent.length + navigator.language.length + screen.colorDepth + (screen.width * screen.height);
+
+                const res = await fetch(GAS_URL, {
+                    method: "POST",
+                    body: JSON.stringify({ 
+                        action: "getToken", 
+                        phone: phone, 
+                        ip: ipData.ip, 
+                        fingerprint: fingerprint.toString() 
+                    })
+                });
+                const result = await res.json();
+                
+                if (result.status === "success") {
+                    localStorage.setItem('v_token', result.token);
+                    alert("領取成功！即將前往投票頁");
+                    location.href = `index.html?token=${result.token}`;
+                } else {
+                    alert(result.message);
+                    btn.disabled = false;
+                }
+            } catch (e) {
+                alert("系統繁忙，請稍後再試");
+                btn.disabled = false;
+            }
+        }
+    </script>
+</body>
+</html>

@@ -1,0 +1,56 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>即時投票排行榜</title>
+    <style>
+        body { font-family: sans-serif; background: #eee; padding: 10px; }
+        .list-item { display: flex; align-items: center; background: white; margin: 8px 0; padding: 12px; border-radius: 10px; }
+        .votes { margin-left: auto; font-weight: bold; color: #f39c12; }
+        button { margin-left: 10px; padding: 6px 12px; background: #28a745; color: white; border: none; border-radius: 5px; cursor: pointer; }
+    </style>
+</head>
+<body>
+    <h2 style="text-align:center;">🏆 即時競賽排名</h2>
+    <div id="board">載入中...</div>
+
+    <script>
+        const GAS_URL = "你的_GAS_網址";
+        const urlParams = new URLSearchParams(window.location.search);
+        let myToken = urlParams.get('token') || localStorage.getItem('v_token');
+
+        async function fetchBoard() {
+            const res = await fetch(GAS_URL);
+            const data = await res.json();
+            const board = document.getElementById('board');
+            board.innerHTML = '';
+            data.teams.forEach(t => {
+                const item = document.createElement('div');
+                item.className = 'list-item';
+                item.innerHTML = `<span>${t.name}</span><span class="votes">${t.votes} 票</span><button onclick="vote('${t.name}')">投票</button>`;
+                board.appendChild(item);
+            });
+        }
+
+        async function vote(teamName) {
+            if (!myToken) return alert("請先掃碼領取密碼");
+            if (!confirm(`確定投給 ${teamName}？投票後密碼將立即失效。`)) return;
+
+            const res = await fetch(GAS_URL, {
+                method: "POST",
+                body: JSON.stringify({ token: myToken, teamName: teamName })
+            });
+            const result = await res.json();
+            alert(result.message);
+            if (result.status === "success") {
+                localStorage.removeItem('v_token'); // 投完就清除
+                myToken = null;
+                fetchBoard();
+            }
+        }
+
+        fetchBoard();
+        setInterval(fetchBoard, 5000);
+    </script>
+</body>
+</html>
