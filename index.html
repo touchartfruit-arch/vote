@@ -4,56 +4,88 @@
     <meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>即時投票排行榜</title>
     <style>
-        body { font-family: sans-serif; background: #eee; padding: 10px; }
-        .list-item { display: flex; align-items: center; background: white; margin: 8px 0; padding: 12px; border-radius: 10px; }
+        body { font-family: sans-serif; background: #eee; padding: 10px; text-align: center; }
+        .list-item { display: flex; align-items: center; background: white; margin: 8px 0; padding: 12px; border-radius: 10px; text-align: left; }
         .votes { margin-left: auto; font-weight: bold; color: #f39c12; }
-        button { margin-left: 10px; padding: 6px 12px; background: #28a745; color: white; border: none; border-radius: 5px; cursor: pointer; }
+        button { margin-left: 10px; padding: 8px 15px; background: #28a745; color: white; border: none; border-radius: 5px; cursor: pointer; }
+        #time-display { font-size: 0.9rem; color: #666; margin-bottom: 10px; }
+        .loading-mask { display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(255,255,255,0.9); z-index:100; flex-direction:column; justify-content:center; align-items:center; }
     </style>
 </head>
 <body>
-    <h2 style="text-align:center;">🏆 即時競賽排名</h2>
+    <h2>🏆 即時競賽排名</h2>
+    <div id="time-display">載入時間：--/-- --:--:--</div>
+    
     <div id="board">載入中...</div>
 
+    <div id="mask" class="loading-mask">
+        <h2 style="color:#28a745;">✅ 投票成功！</h2>
+        <p>正在為您開啟即時統計圖表...</p>
+    </div>
+
     <script>
-        const GAS_URL ="https://script.google.com/macros/s/AKfycbwP1hwdYqOWZZgBs059-tdRMGcaAv7oAlqaB5CWjuHY_l0eccyX-ay_zwCBLvHBa2Y_Sw/exec";
+        const GAS_URL = "你的_GAS_網址";
+        // 這是你剛剛從試算表發布圖表獲得的網址
+        const CHART_URL = "你的_圖表發布網址"; 
+
         const urlParams = new URLSearchParams(window.location.search);
         let myToken = urlParams.get('token') || localStorage.getItem('v_token');
 
+        // 更新時間的函式
+        function updateTime() {
+            const now = new Date();
+            const timeStr = `${now.getFullYear()}/${now.getMonth()+1}/${now.getDate()} ${now.getHours().toString().padStart(2,'0')}:${now.getMinutes().toString().padStart(2,'0')}:${now.getSeconds().toString().padStart(2,'0')}`;
+            document.getElementById('time-display').innerText = `最後更新：${timeStr}`;
+        }
+
         async function fetchBoard() {
-            const res = await fetch(GAS_URL);
-            const data = await res.json();
-            const board = document.getElementById('board');
-            board.innerHTML = '';
-            data.teams.forEach(t => {
-                const item = document.createElement('div');
-                item.className = 'list-item';
-                item.innerHTML = `<span>${t.name}</span><span class="votes">${t.votes} 票</span><button onclick="vote('${t.name}')">投票</button>`;
-                board.appendChild(item);
-            });
+            try {
+                const res = await fetch(GAS_URL);
+                const data = await res.json();
+                const board = document.getElementById('board');
+                board.innerHTML = '';
+                data.teams.forEach(t => {
+                    const item = document.createElement('div');
+                    item.className = 'list-item';
+                    item.innerHTML = `<span>${t.name}</span><span class="votes">${t.votes} 票</span><button onclick="vote('${t.name}')">投票</button>`;
+                    board.appendChild(item);
+                });
+                updateTime(); // 每次刷新資料就更新時間
+            } catch(e) { console.error("更新失敗"); }
         }
 
         async function vote(teamName) {
             if (!myToken) return alert("請先掃碼領取密碼");
-            if (!confirm(`確定投給 ${teamName}？投票後密碼將立即失效。`)) return;
+            if (!confirm(`確定投給 ${teamName}？`)) return;
 
-            const res = await fetch(GAS_URL, {
-                method: "POST",
-                body: JSON.stringify({ token: myToken, teamName: teamName })
-            });
-            const result = await res.json();
-            alert(result.message);
-            if (result.status === "success") {
-                localStorage.removeItem('v_token'); // 投完就清除
-                myToken = null;
-                fetchBoard();
+            // 顯示成功跳轉遮罩
+            document.getElementById('mask').style.display = 'flex';
+
+            try {
+                const res = await fetch(GAS_URL, {
+                    method: "POST",
+                    body: JSON.stringify({ token: myToken, teamName: teamName })
+                });
+                const result = await res.json();
+                
+                if (result.status === "success") {
+                    localStorage.removeItem('v_token');
+                    // 1.5秒後跳轉至圖表頁面
+                    setTimeout(() => {
+                        window.location.href = CHART_URL;
+                    }, 1500);
+                } else {
+                    alert(result.message);
+                    document.getElementById('mask').style.display = 'none';
+                }
+            } catch (e) {
+                alert("系統錯誤");
+                document.getElementById('mask').style.display = 'none';
             }
         }
 
         fetchBoard();
-        setInterval(fetchBoard, 5000);
+        setInterval(fetchBoard, 5000); // 每5秒自動同步一次時間與票數
     </script>
 </body>
-
 </html>
-
-
