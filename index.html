@@ -26,7 +26,8 @@
     <script>
         const GAS_URL ="https://script.google.com/macros/s/AKfycbxdACnIEYaFatj83Qx8mYe1tGLtJZQJ37Xx8le43D8IglAJRrGqrr9bYU4FdrEnNwzQtQ/exec";
         // 這是你剛剛從試算表發布圖表獲得的網址
-        const CHART_URL ="https://docs.google.com/spreadsheets/d/e/2PACX-1vStjZ2tWU1fjGOnLXnChcBlKPVsmnZbEILfCdkP6qkMsezNg3Rj9V-PqRT7cTJl6c1q131kADV9kpCU/pubchart?oid=1758790236&format=interactive"; 
+        // 修改 index.html 裡的這一行
+        const CHART_URL = "https://touchartfruit-arch.github.io/vote/result.html"; 
 
         const urlParams = new URLSearchParams(window.location.search);
         let myToken = urlParams.get('token') || localStorage.getItem('v_token');
@@ -89,5 +90,6 @@
     </script>
 </body>
 </html>
+
 
 
