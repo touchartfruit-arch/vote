@@ -2,85 +2,139 @@
 <html>
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>即時投票統計</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>即時投票戰報</title>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <style>
-        body { margin: 0; padding: 15px; background: #1a1a1a; color: white; font-family: sans-serif; height: 100vh; display: flex; flex-direction: column; box-sizing: border-box; }
-        #header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px; }
-        #time-display { font-family: monospace; color: #00ff00; font-size: 1.1rem; }
-        .chart-container { flex-grow: 1; position: relative; width: 100%; }
-        h2 { margin: 0; font-size: 1.2rem; }
+        /* 達成極致滿版效果 */
+        * { box-sizing: border-box; }
+        body { 
+            margin: 0; padding: 10px; 
+            background: #0e1013; color: #e0e0e0; 
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; 
+            height: 100vh; width: 100vw;
+            display: flex; flex-direction: column; 
+            overflow: hidden; /* 防止手機瀏覽器出現不必要的捲軸 */
+        }
+        #header { 
+            display: flex; justify-content: space-between; align-items: flex-end; 
+            padding: 5px 10px 15px 10px; 
+            border-bottom: 1px solid #333;
+        }
+        .title-area h2 { margin: 0; font-size: 1.3rem; color: #fff; letter-spacing: 1px; }
+        .title-area span { font-size: 0.75rem; color: #888; }
+        #time-display { 
+            font-family: "Courier New", monospace; 
+            color: #00ff00; font-size: 1rem; font-weight: bold;
+            text-shadow: 0 0 5px rgba(0,255,0,0.5);
+        }
+        .chart-wrapper { 
+            flex-grow: 1; position: relative; width: 100%; padding: 10px 0;
+        }
     </style>
 </head>
 <body>
     <div id="header">
-        <h2>📊 即時統計看板</h2>
-        <div id="time-display">0000/00/00 00:00:00</div>
+        <div class="title-area">
+            <h2>🏆 即時票數戰報</h2>
+            <span>每 5 秒自動更新數據</span>
+        </div>
+        <div id="time-display">00:00:00</div>
     </div>
-    <div class="chart-container">
-        <canvas id="myChart"></canvas>
+    
+    <div class="chart-wrapper">
+        <canvas id="liveChart"></canvas>
     </div>
 
     <script>
-        const GAS_URL = "https://script.google.com/macros/s/AKfycbxdACnIEYaFatj83Qx8mYe1tGLtJZQJ37Xx8le43D8IglAJRrGqrr9bYU4FdrEnNwzQtQ/exec";
-        let myChart;
+        const GAS_URL ="https://script.google.com/macros/s/AKfycbxdACnIEYaFatj83Qx8mYe1tGLtJZQJ37Xx8le43D8IglAJRrGqrr9bYU4FdrEnNwzQtQ/exec"; // 記得填入你的 GAS /exec 網址
+        let liveChart;
 
-        // 更新時間
+        // 數位時鐘
         function updateClock() {
             const now = new Date();
-            const str = now.getFullYear() + '/' + (now.getMonth()+1).toString().padStart(2,'0') + '/' + now.getDate().toString().padStart(2,'0') + ' ' +
-                        now.getHours().toString().padStart(2,'0') + ':' + now.getMinutes().toString().padStart(2,'0') + ':' + now.getSeconds().toString().padStart(2,'0');
-            document.getElementById('time-display').innerText = str;
+            const timeStr = now.getHours().toString().padStart(2,'0') + ':' + 
+                          now.getMinutes().toString().padStart(2,'0') + ':' + 
+                          now.getSeconds().toString().padStart(2,'0');
+            const dateStr = now.getFullYear() + '/' + (now.getMonth()+1) + '/' + now.getDate();
+            document.getElementById('time-display').innerHTML = `<div style="font-size:0.7rem; text-align:right; color:#888">${dateStr}</div>${timeStr}`;
         }
-        setInterval(updateClock, 1000);
 
-        // 初始化圖表
+        // 根據排名生成顏色
+        function getColors(count) {
+            // 第一名金色，其餘使用不同透明度的藍色
+            const colors = [];
+            for (let i = 0; i < count; i++) {
+                if (i === 0) {
+                    colors.push('rgba(255, 215, 0, 0.9)'); // Gold
+                } else {
+                    colors.push(`rgba(54, 162, 235, ${0.8 - (i * 0.1)})`); // 漸層藍
+                }
+            }
+            return colors;
+        }
+
         async function initChart() {
             const res = await fetch(GAS_URL);
             const data = await res.json();
+            
+            // GAS 回傳的資料已經依票數排好序了
             const labels = data.teams.map(t => t.name);
             const votes = data.teams.map(t => t.votes);
 
-            const ctx = document.getElementById('myChart').getContext('2d');
-            myChart = new Chart(ctx, {
-                type: 'bar', // 使用橫條圖
+            const ctx = document.getElementById('liveChart').getContext('2d');
+            liveChart = new Chart(ctx, {
+                type: 'bar',
                 data: {
                     labels: labels,
                     datasets: [{
-                        label: '票數',
                         data: votes,
-                        backgroundColor: 'rgba(54, 162, 235, 0.8)',
-                        borderColor: 'rgba(54, 162, 235, 1)',
-                        borderWidth: 1,
-                        borderRadius: 5
+                        backgroundColor: getColors(labels.length),
+                        borderRadius: 6,
+                        barPercentage: 0.7
                     }]
                 },
                 options: {
-                    indexAxis: 'y', // 讓長條圖橫向，手機更易讀
+                    indexAxis: 'y',
                     responsive: true,
                     maintainAspectRatio: false,
-                    scales: {
-                        x: { grid: { color: '#333' }, ticks: { color: '#fff', stepSize: 1 } },
-                        y: { ticks: { color: '#fff', font: { size: 14 } } }
-                    },
                     plugins: {
                         legend: { display: false }
+                    },
+                    scales: {
+                        x: { 
+                            grid: { color: '#222' }, 
+                            ticks: { color: '#aaa', stepSize: 1 } 
+                        },
+                        y: { 
+                            ticks: { color: '#fff', font: { size: 14, weight: 'bold' } },
+                            grid: { display: false }
+                        }
                     }
                 }
             });
         }
 
-        // 定期刷新數據
         async function refreshData() {
-            const res = await fetch(GAS_URL);
-            const data = await res.json();
-            myChart.data.datasets[0].data = data.teams.map(t => t.votes);
-            myChart.update();
+            try {
+                const res = await fetch(GAS_URL);
+                const data = await res.json();
+                
+                // 更新數據、標籤與顏色 (因為排名可能會變動)
+                liveChart.data.labels = data.teams.map(t => t.name);
+                liveChart.data.datasets[0].data = data.teams.map(t => t.votes);
+                liveChart.data.datasets[0].backgroundColor = getColors(data.teams.length);
+                
+                liveChart.update('none'); // 'none' 表示不需要動畫，更新更滑順
+            } catch (e) {
+                console.log("自動更新失敗，稍後重試...");
+            }
         }
 
+        // 啟動
         initChart();
         setInterval(refreshData, 5000);
+        setInterval(updateClock, 1000);
         updateClock();
     </script>
 </body>
